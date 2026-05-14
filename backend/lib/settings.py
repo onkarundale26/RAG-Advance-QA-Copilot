@@ -32,8 +32,8 @@ QDRANT_URL = os.environ.get("QDRANT_URL", "").strip()
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "").strip()
 QDRANT_PATH = _path("QDRANT_PATH", "./qdrant_data")
 
-EMBED_MODEL = os.environ.get("EMBED_MODEL", "BAAI/bge-m3").strip()
-RERANK_MODEL = os.environ.get("RERANK_MODEL", "BAAI/bge-reranker-v2-m3").strip()
+EMBED_MODEL = os.environ.get("EMBED_MODEL", "text-embedding-3-small").strip()
+RERANK_MODEL = os.environ.get("RERANK_MODEL", "overlap-fallback").strip()
 
 SELENIUM_REPO_DIR = _path("SELENIUM_REPO_DIR", "./data/selenium_repo")
 PLAYWRIGHT_REPO_DIR = _path("PLAYWRIGHT_REPO_DIR", "./data/playwright_repo")

@@ -1,0 +1,9 @@
+data/
+qdrant_data/
+node_modules/
+dist/
+*.log
+.git/
+.venv/
+venv/
+temp_uploads/

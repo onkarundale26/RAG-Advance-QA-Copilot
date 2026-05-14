@@ -54,13 +54,8 @@ def rerank(question: str, candidates: list[dict], top_k: int = 4) -> list[dict]:
     if not candidates:
         return []
 
-    if not _bool_env("USE_LOCAL_RERANKER", True):
-        return _fallback_rerank(question, candidates, top_k, reason="disabled")
-
-    if _LOAD_TIMED_OUT and _FUTURE is not None and not _FUTURE.done():
-        return _fallback_rerank(question, candidates, top_k, reason="loading")
-
-    timeout = float(os.environ.get("RERANK_TIMEOUT_SECONDS", "5"))
+    if not _bool_env("USE_LOCAL_RERANKER", False):
+        return _fallback_rerank(question, candidates, top_k, reason="disabled for Vercel")
     try:
         model = get_reranker(timeout_seconds=timeout)
         _LOAD_TIMED_OUT = False

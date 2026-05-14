@@ -1,69 +1,46 @@
-"""bge-m3 wrapper producing dense + sparse vectors from one model.
+"""OpenAI embedding wrapper for Vercel-compatible dense vectors.
 
-Ported from Chapter_08_RAG/Advance_RAG_EXPLAIN/lib/embeddings.py.
+Replaces local BGE-M3 to fit within serverless size limits.
 """
 from __future__ import annotations
 
 import os
-import threading
-
+from openai import OpenAI
 import numpy as np
 
 from . import settings
 
-_MODEL = None
-_LOCK = threading.Lock()
+_CLIENT = None
 
+def get_openai_client():
+    global _CLIENT
+    if _CLIENT is None:
+        _CLIENT = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    return _CLIENT
 
-def get_embedder():
-    global _MODEL
-    if _MODEL is not None:
-        return _MODEL
-    with _LOCK:
-        if _MODEL is not None:
-            return _MODEL
-        from FlagEmbedding import BGEM3FlagModel
-        use_fp16 = os.environ.get("BGE_USE_FP16", "1") != "0"
-        _MODEL = BGEM3FlagModel(settings.EMBED_MODEL, use_fp16=use_fp16)
-    return _MODEL
-
-
-def _format_sparse(raw_sparse) -> list[dict]:
-    out: list[dict] = []
-    for item in raw_sparse:
-        if isinstance(item, dict):
-            indices = list(item.keys())
-            values = list(item.values())
-        else:
-            indices = list(getattr(item, "indices", []))
-            values = list(getattr(item, "values", []))
-        indices = [int(i) for i in indices]
-        values = [float(v) for v in values]
-        out.append({"indices": indices, "values": values})
-    return out
-
-
-def embed_batch(texts: list[str], batch_size: int = 16) -> dict:
-    model = get_embedder()
-    out_dense: list[np.ndarray] = []
-    out_sparse: list[dict] = []
+def embed_batch(texts: list[str], batch_size: int = 100) -> dict:
+    """Embed texts using OpenAI text-embedding-3-small (1536d)."""
+    client = get_openai_client()
+    all_dense = []
+    
     for i in range(0, len(texts), batch_size):
         batch = texts[i:i + batch_size]
-        result = model.encode(
-            batch,
-            batch_size=len(batch),
-            return_dense=True,
-            return_sparse=True,
-            return_colbert_vecs=False,
+        res = client.embeddings.create(
+            input=batch,
+            model="text-embedding-3-small"
         )
-        dense = np.asarray(result["dense_vecs"], dtype=np.float32)
-        out_dense.append(dense)
-        out_sparse.extend(_format_sparse(result["lexical_weights"]))
-    if not out_dense:
-        return {"dense": np.zeros((0, 1024), dtype=np.float32), "sparse": []}
-    return {"dense": np.vstack(out_dense), "sparse": out_sparse}
-
+        all_dense.extend([np.array(d.embedding, dtype=np.float32) for d in res.data])
+    
+    if not all_dense:
+        return {"dense": np.zeros((0, 1536), dtype=np.float32), "sparse": []}
+        
+    # Return empty sparse vectors for compatibility with existing Qdrant hybrid logic
+    return {
+        "dense": np.vstack(all_dense),
+        "sparse": [{"indices": [], "values": []} for _ in all_dense]
+    }
 
 def embed_query(text: str) -> dict:
-    res = embed_batch([text], batch_size=1)
+    res = embed_batch([text])
     return {"dense": res["dense"][0], "sparse": res["sparse"][0]}
+

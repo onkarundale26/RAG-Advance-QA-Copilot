@@ -10,3 +10,5 @@ dist/
 *_server*.log
 .venv/
 venv/
+
+.vercel
