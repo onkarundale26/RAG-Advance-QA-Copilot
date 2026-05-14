@@ -1,46 +1,69 @@
-"""OpenAI embedding wrapper for Vercel-compatible dense vectors.
+"""Jina AI embedding wrapper for Vercel-compatible dense vectors.
 
-Replaces local BGE-M3 to fit within serverless size limits.
+Uses Jina Embeddings v3 for high quality and serverless speed.
 """
 from __future__ import annotations
 
 import os
-from openai import OpenAI
+import requests
 import numpy as np
 
 from . import settings
 
-_CLIENT = None
+JINA_API_URL = "https://api.jina.ai/v1/embeddings"
 
-def get_openai_client():
-    global _CLIENT
-    if _CLIENT is None:
-        _CLIENT = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-    return _CLIENT
-
-def embed_batch(texts: list[str], batch_size: int = 100) -> dict:
-    """Embed texts using OpenAI text-embedding-3-small (1536d)."""
-    client = get_openai_client()
+def embed_batch(texts: list[str], batch_size: int = 16) -> dict:
+    """Embed texts using Jina Embeddings v3 (1024d)."""
+    api_key = os.environ.get("JINA_API_KEY")
+    if not api_key:
+        raise ValueError("JINA_API_KEY environment variable is not set")
+        
     all_dense = []
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
     
     for i in range(0, len(texts), batch_size):
         batch = texts[i:i + batch_size]
-        res = client.embeddings.create(
-            input=batch,
-            model="text-embedding-3-small"
-        )
-        all_dense.extend([np.array(d.embedding, dtype=np.float32) for d in res.data])
+        data = {
+            "model": "jina-embeddings-v3",
+            "task": "retrieval.passage",
+            "dimensions": 1024,
+            "late_chunking": False,
+            "embedding_type": "float",
+            "input": batch
+        }
+        resp = requests.post(JINA_API_URL, headers=headers, json=data)
+        resp.raise_for_status()
+        result = resp.json()
+        all_dense.extend([np.array(d["embedding"], dtype=np.float32) for d in result["data"]])
     
     if not all_dense:
-        return {"dense": np.zeros((0, 1536), dtype=np.float32), "sparse": []}
+        return {"dense": np.zeros((0, 1024), dtype=np.float32), "sparse": []}
         
-    # Return empty sparse vectors for compatibility with existing Qdrant hybrid logic
     return {
         "dense": np.vstack(all_dense),
         "sparse": [{"indices": [], "values": []} for _ in all_dense]
     }
 
 def embed_query(text: str) -> dict:
-    res = embed_batch([text])
-    return {"dense": res["dense"][0], "sparse": res["sparse"][0]}
+    api_key = os.environ.get("JINA_API_KEY")
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+    data = {
+        "model": "jina-embeddings-v3",
+        "task": "retrieval.query",
+        "dimensions": 1024,
+        "late_chunking": False,
+        "embedding_type": "float",
+        "input": [text]
+    }
+    resp = requests.post(JINA_API_URL, headers=headers, json=data)
+    resp.raise_for_status()
+    result = resp.json()
+    dense = np.array(result["data"][0]["embedding"], dtype=np.float32)
+    return {"dense": dense, "sparse": {"indices": [], "values": []}}
 

@@ -15,8 +15,7 @@ from qdrant_client.http import models as qm
 
 from . import settings
 
-DENSE_DIM = 1536
-
+DENSE_DIM = 1024
 
 _CLIENT = None
 _LOCK = threading.Lock()
