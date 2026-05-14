@@ -34,10 +34,24 @@ def embed_batch(texts: list[str], batch_size: int = 16) -> dict:
             "embedding_type": "float",
             "input": batch
         }
-        resp = requests.post(JINA_API_URL, headers=headers, json=data)
-        resp.raise_for_status()
-        result = resp.json()
-        all_dense.extend([np.array(d["embedding"], dtype=np.float32) for d in result["data"]])
+        try:
+            resp = requests.post(JINA_API_URL, headers=headers, json=data)
+            resp.raise_for_status()
+            result = resp.json()
+            all_dense.extend([np.array(d["embedding"], dtype=np.float32) for d in result["data"]])
+        except Exception as e:
+            print(f"  Batch failed at index {i}, retrying items individually...")
+            # If batch fails, try one by one to find the culprit
+            for text in batch:
+                try:
+                    single_data = {**data, "input": [text[:30000]]} # Trim very long text
+                    r = requests.post(JINA_API_URL, headers=headers, json=single_data)
+                    r.raise_for_status()
+                    all_dense.append(np.array(r.json()["data"][0]["embedding"], dtype=np.float32))
+                except Exception as inner_e:
+                    print(f"    Skipping chunk due to error: {inner_e}")
+                    # Use zero vector if we must skip to keep indices aligned
+                    all_dense.append(np.zeros(1024, dtype=np.float32))
     
     if not all_dense:
         return {"dense": np.zeros((0, 1024), dtype=np.float32), "sparse": []}
