@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QA Copilot — RAG Architecture & Explorer | The Testing Academy</title>
+<meta name="description" content="QA Copilot — multi-source RAG knowledge transfer: architecture diagram, component breakdown, and the RAG Explorer debugger. Chapter 9, AI Tester Blueprint 2x." />
+
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-typescript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" />
+
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #fafafa;
+    --bg-card: #f3f4f6;
+    --bg-card-2: #f9fafb;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text: #111827;
+    --text-soft: #4b5563;
+    --text-muted: #6b7280;
+    --accent: #06b6d4;
+    --accent-strong: #0891b2;
+    --accent-soft: #cffafe;
+    --green: #10b981;
+    --green-soft: #d1fae5;
+    --amber: #f59e0b;
+    --amber-soft: #fef3c7;
+    --red: #ef4444;
+    --red-soft: #fee2e2;
+    --radius: 10px;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", Menlo, Monaco, "Courier New", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent-strong); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ----- Top bar ----- */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 1280px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 24px; gap: 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+  .brand .dot {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    display: grid; place-items: center; color: white; font-size: 14px;
+    box-shadow: 0 2px 6px rgba(6,182,212,0.35);
+  }
+  .nav { display: flex; gap: 22px; font-size: 14px; color: var(--text-soft); }
+  .nav a { color: var(--text-soft); }
+  .nav a:hover { color: var(--accent-strong); text-decoration: none; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border: 1px solid var(--border);
+    border-radius: 999px; font-size: 12px; color: var(--text-muted);
+    background: var(--bg-soft);
+  }
+  .pill.live { color: var(--accent-strong); border-color: var(--accent-soft); background: var(--accent-soft); font-weight: 600; }
+
+  /* ----- Layout ----- */
+  .layout {
+    max-width: 1280px; margin: 0 auto;
+    display: grid; grid-template-columns: 240px 1fr;
+    gap: 32px; padding: 32px 24px 96px;
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; padding: 16px; }
+    .sidebar { position: static; max-height: none; }
+  }
+
+  /* ----- Sidebar ----- */
+  .sidebar {
+    position: sticky; top: 72px; align-self: start;
+    max-height: calc(100vh - 96px); overflow-y: auto;
+    font-size: 14px;
+  }
+  .sidebar h4 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-muted); margin: 18px 0 8px;
+  }
+  .sidebar ul { list-style: none; padding: 0; margin: 0; }
+  .sidebar li { margin: 2px 0; }
+  .sidebar a {
+    display: block; padding: 6px 10px; border-radius: 6px;
+    color: var(--text-soft);
+  }
+  .sidebar a:hover { background: var(--bg-card); color: var(--text); text-decoration: none; }
+  .sidebar a.active { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
+
+  /* ----- Hero ----- */
+  .hero {
+    margin-bottom: 36px;
+    padding: 36px 32px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background:
+      radial-gradient(900px 200px at 100% 0%, rgba(6,182,212,0.10), transparent 60%),
+      radial-gradient(600px 200px at 0% 100%, rgba(8,145,178,0.06), transparent 60%),
+      linear-gradient(180deg, #fff, #fbfeff);
+    box-shadow: var(--shadow);
+  }
+  .hero .crumb { font-size: 12px; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px; }
+  .hero h1 {
+    font-size: 38px; line-height: 1.15; margin: 0 0 12px;
+    letter-spacing: -0.02em;
+    background: linear-gradient(180deg, #0f172a, #334155);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero p { font-size: 17px; color: var(--text-soft); margin: 0 0 20px; max-width: 760px; }
+  .stat-row { display: flex; flex-wrap: wrap; gap: 12px; }
+  .stat {
+    background: white; border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px; min-width: 130px;
+    box-shadow: var(--shadow-sm);
+  }
+  .stat .num { font-size: 22px; font-weight: 700; color: var(--accent-strong); }
+  .stat .lbl { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* ----- Sections ----- */
+  section { scroll-margin-top: 72px; margin-bottom: 56px; }
+  .section-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 16px; }
+  .section-num {
+    font-family: var(--font-mono); font-weight: 700;
+    color: var(--accent-strong); font-size: 14px; letter-spacing: 0.04em;
+  }
+  h2 { font-size: 28px; margin: 0; letter-spacing: -0.015em; }
+  h3 { font-size: 19px; margin: 28px 0 10px; }
+  h4 { font-size: 15px; margin: 18px 0 6px; }
+
+  /* ----- Cards ----- */
+  .card {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: white; padding: 20px 22px; box-shadow: var(--shadow-sm);
+  }
+  .card + .card { margin-top: 14px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 800px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* ----- Badges ----- */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 3px 8px; border-radius: 999px; border: 1px solid transparent;
+  }
+  .badge.green { background: var(--green-soft); color: #065f46; border-color: #a7f3d0; }
+  .badge.amber { background: var(--amber-soft); color: #92400e; border-color: #fde68a; }
+  .badge.red   { background: var(--red-soft);   color: #991b1b; border-color: #fecaca; }
+  .badge.cyan  { background: var(--accent-soft); color: var(--accent-strong); border-color: #a5f3fc; }
+  .badge.gray  { background: var(--bg-card); color: var(--text-soft); border-color: var(--border); }
+
+  /* ----- Tables ----- */
+  table {
+    width: 100%; border-collapse: collapse; font-size: 14px; margin: 14px 0 8px;
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-card-2); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-soft); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg-soft); }
+
+  /* ----- Code ----- */
+  pre[class*="language-"] {
+    border-radius: 10px; padding: 16px 18px; font-size: 13px;
+    line-height: 1.55; box-shadow: var(--shadow-sm);
+  }
+  code:not([class*="language-"]) {
+    font-family: var(--font-mono); font-size: 0.92em;
+    background: var(--bg-card); padding: 1px 6px; border-radius: 4px; color: var(--text);
+  }
+
+  /* ----- Mermaid container ----- */
+  .diagram {
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px; overflow-x: auto; box-shadow: var(--shadow-sm);
+  }
+  .diagram .legend {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;
+    font-size: 12px; color: var(--text-soft);
+  }
+  .legend .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+
+  /* ----- Pipeline stages ----- */
+  .pipeline {
+    display: grid; grid-template-columns: repeat(6, 1fr);
+    gap: 10px; margin: 14px 0;
+  }
+  @media (max-width: 1100px) { .pipeline { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 600px)  { .pipeline { grid-template-columns: repeat(2, 1fr); } }
+  .stage {
+    background: white; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; font-size: 13px; box-shadow: var(--shadow-sm);
+  }
+  .stage .step { font-family: var(--font-mono); font-size: 11px; color: var(--accent-strong); font-weight: 700; }
+  .stage .name { font-weight: 700; margin: 4px 0; }
+  .stage .det  { color: var(--text-muted); font-size: 12px; }
+
+  /* ----- Component cards ----- */
+  .comp {
+    border: 1px solid var(--border); border-radius: 10px; background: white;
+    padding: 16px 18px; height: 100%;
+  }
+  .comp .icon { width: 36px; height: 36px; border-radius: 8px;
+    display: grid; place-items: center; color: white; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    box-shadow: 0 2px 5px rgba(6,182,212,0.35);
+    margin-bottom: 10px;
+  }
+  .comp h4 { margin: 0 0 4px; font-size: 16px; }
+  .comp .role { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .comp p { margin: 0; color: var(--text-soft); font-size: 14px; }
+
+  /* ----- Callout ----- */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    color: #155e75;
+    padding: 12px 16px; border-radius: 6px; margin: 14px 0; font-size: 14px;
+  }
+  .callout.warn {
+    border-left-color: var(--amber); background: var(--amber-soft); color: #92400e;
+  }
+
+  /* ----- Footer ----- */
+  footer {
+    border-top: 1px solid var(--border); margin-top: 32px;
+    padding: 24px; text-align: center; font-size: 13px; color: var(--text-muted);
+  }
+  footer .author { color: var(--text-soft); font-weight: 600; }
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="dot">QA</div>
+      <span>QA Copilot · KT</span>
+      <span class="pill live">Chapter 09</span>
+    </div>
+    <div class="nav">
+      <a href="#overview">Overview</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#flow">Pipeline</a>
+      <a href="#explorer">RAG Explorer</a>
+      <a href="#components">Components</a>
+      <a href="#run">Run</a>
+      <a href="./prompts.html">Transcript</a>
+    </div>
+    <span class="pill">⌘ K</span>
+  </div>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>Knowledge Transfer</h4>
+    <ul>
+      <li><a href="#overview" class="active">01 · Overview</a></li>
+      <li><a href="#architecture">02 · Architecture Diagram</a></li>
+      <li><a href="#sources">03 · Five Sources</a></li>
+      <li><a href="#flow">04 · Query Pipeline</a></li>
+      <li><a href="#explorer">05 · RAG Explorer</a></li>
+      <li><a href="#components">06 · Components</a></li>
+      <li><a href="#schemas">07 · Chunk Schemas</a></li>
+      <li><a href="#run">08 · Run It</a></li>
+      <li><a href="#scheduler">09 · Hourly Scheduler</a></li>
+      <li><a href="#deploy">10 · Deployment Guide</a></li>
+      <li><a href="#tradeoffs">11 · Design Trade-offs</a></li>
+    </ul>
+    <h4>Stack</h4>
+    <ul>
+      <li><span class="badge cyan">FastAPI</span></li>
+      <li><span class="badge cyan">React + Vite</span></li>
+      <li><span class="badge cyan">Qdrant</span></li>
+      <li><span class="badge cyan">bge-m3</span></li>
+      <li><span class="badge cyan">Groq · gpt-oss-120b</span></li>
+    </ul>
+  </aside>
+
+  <main>
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="crumb">AI Tester Blueprint 2x · Chapter 09 · QA Copilot</div>
+      <h1>QA Copilot — Multi-Source RAG with a Built-in Explorer</h1>
+      <p>
+        A retrieval-augmented copilot for QA engineers, grounded in 5 heterogeneous artifacts:
+        a Selenium framework, a Playwright framework, the VWO test-case corpus, product PDFs
+        (PRDs), and JIRA bug exports. Hybrid retrieval (dense + sparse), cross-encoder rerank,
+        intent routing, and a transparent <em>RAG Explorer</em> that exposes every chunk and
+        every decision behind an answer.
+      </p>
+      <div class="stat-row">
+        <div class="stat"><div class="num">5</div><div class="lbl">Collections</div></div>
+        <div class="stat"><div class="num">2</div><div class="lbl">Vector Types</div></div>
+        <div class="stat"><div class="num">6</div><div class="lbl">Pipeline Stages</div></div>
+        <div class="stat"><div class="num">120B</div><div class="lbl">LLM Params (Groq)</div></div>
+        <div class="stat"><div class="num">1024</div><div class="lbl">Embed Dim</div></div>
+      </div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <section id="overview">
+      <div class="section-head">
+        <span class="section-num">01</span>
+        <h2>Overview</h2>
+        <span class="badge green">Capstone</span>
+      </div>
+
+      <div class="card">
+        <p style="margin-top:0;">
+          QA Copilot answers natural-language questions like
+          <em>"Show the BasePage waitForElement implementation"</em>,
+          <em>"List P0 Blocker tests for Admin"</em>, or
+          <em>"What does the PRD say about login dashboard auth?"</em>.
+          Each answer cites the chunks it used. The <strong>RAG Explorer</strong>
+          exposes the full pipeline so you can <em>debug retrieval</em> the
+          way you debug code.
+        </p>
+        <div class="grid-3" style="margin-top:14px;">
+          <div>
+            <h4>Why hybrid?</h4>
+            <p style="color:var(--text-soft); font-size:14px;">Dense vectors capture meaning;
+            sparse vectors (BM25-like) capture rare tokens — JIRA ids, method names, status flags.
+            Reciprocal Rank Fusion combines both. Code &amp; ticket queries need this.</p>
+          </div>
+          <div>
+            <h4>Why route?</h4>
+            <p style="color:var(--text-soft); font-size:14px;">A small LLM classifier picks
+            1–2 collections per query. "Show login fixture" → playwright_code only.
+            "Open bugs about login" → vwo_bugs + vwo_testcases. Faster, less noise.</p>
+          </div>
+          <div>
+            <h4>Why explore?</h4>
+            <p style="color:var(--text-soft); font-size:14px;">When an answer surprises you,
+            inspect the retrieval. The Explorer tab shows the rewrite, the route decision,
+            per-collection hits, RRF scores, rerank scores, the final context, and the LLM call.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ARCHITECTURE -->
+    <section id="architecture">
+      <div class="section-head">
+        <span class="section-num">02</span>
+        <h2>Architecture Diagram</h2>
+        <span class="badge cyan">Diagram</span>
+      </div>
+
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart LR
+  subgraph SRC["📦 Sources (Disk)"]
+    S1["Selenium repo<br/>(Java, TestNG)"]
+    S2["Playwright repo<br/>(TypeScript)"]
+    S3["VWO Test Cases<br/>CSV · 100 rows"]
+    S4["VWO PDFs<br/>(PRDs / specs)"]
+    S5["JIRA Bug MDs"]
+  end
+
+  subgraph ING["🔧 Ingest Pipelines"]
+    I1["tree-sitter-java<br/>per method/class"]
+    I2["tree-sitter-typescript<br/>per fn / class / test()"]
+    I3["row-aware<br/>(field-labeled)"]
+    I4["PyMuPDF<br/>+ sliding window"]
+    I5["JIRA header parser<br/>+ body chunk"]
+  end
+
+  subgraph EMB["🧠 Embed (BGE-M3)"]
+    E1["Dense 1024d"]
+    E2["Sparse (BM25-like)"]
+  end
+
+  subgraph QDR["🗄️ Qdrant — 5 Collections"]
+    Q1["selenium_code"]
+    Q2["playwright_code"]
+    Q3["vwo_testcases"]
+    Q4["vwo_docs"]
+    Q5["vwo_bugs"]
+  end
+
+  subgraph QRY["💬 Query Path"]
+    U["User question<br/>+ chat history"]
+    R0["Query Rewriter<br/>(Groq)"]
+    R1["Intent Router<br/>(Groq classifier)"]
+    HS["Hybrid Search<br/>(dense + sparse → RRF)"]
+    RR["Cross-encoder Rerank<br/>(bge-reranker-v2-m3)"]
+    LLM["Groq · gpt-oss-120b<br/>Answer w/ citations"]
+  end
+
+  subgraph UI["🖥️ Frontend (React)"]
+    CH["Chat Pane<br/>(SSE stream)"]
+    SP["Source Panel<br/>(citation cards)"]
+    XP["RAG Explorer<br/>(pipeline trace)"]
+  end
+
+  S1 --> I1 --> E1
+  S2 --> I2 --> E1
+  S3 --> I3 --> E1
+  S4 --> I4 --> E1
+  S5 --> I5 --> E1
+  I1 --> E2
+  I2 --> E2
+  I3 --> E2
+  I4 --> E2
+  I5 --> E2
+
+  E1 --> Q1
+  E1 --> Q2
+  E1 --> Q3
+  E1 --> Q4
+  E1 --> Q5
+  E2 --> Q1
+  E2 --> Q2
+  E2 --> Q3
+  E2 --> Q4
+  E2 --> Q5
+
+  U --> R0 --> R1
+  R1 -->|selected collections| HS
+  Q1 --> HS
+  Q2 --> HS
+  Q3 --> HS
+  Q4 --> HS
+  Q5 --> HS
+  HS --> RR --> LLM --> CH
+  RR --> SP
+  R0 --> XP
+  R1 --> XP
+  HS --> XP
+  RR --> XP
+  LLM --> XP
+
+  classDef src fill:#fef3c7,stroke:#f59e0b,color:#7c2d12;
+  classDef ing fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a;
+  classDef emb fill:#fae8ff,stroke:#a855f7,color:#581c87;
+  classDef qdr fill:#cffafe,stroke:#06b6d4,color:#155e75;
+  classDef qry fill:#dcfce7,stroke:#10b981,color:#064e3b;
+  classDef ui  fill:#fee2e2,stroke:#ef4444,color:#7f1d1d;
+  class S1,S2,S3,S4,S5 src;
+  class I1,I2,I3,I4,I5 ing;
+  class E1,E2 emb;
+  class Q1,Q2,Q3,Q4,Q5 qdr;
+  class U,R0,R1,HS,RR,LLM qry;
+  class CH,SP,XP ui;
+        </pre>
+        <div class="legend">
+          <span><span class="swatch" style="background:#fef3c7;border:1px solid #f59e0b;"></span>Sources</span>
+          <span><span class="swatch" style="background:#dbeafe;border:1px solid #3b82f6;"></span>Ingest</span>
+          <span><span class="swatch" style="background:#fae8ff;border:1px solid #a855f7;"></span>Embed</span>
+          <span><span class="swatch" style="background:#cffafe;border:1px solid #06b6d4;"></span>Vector Store</span>
+          <span><span class="swatch" style="background:#dcfce7;border:1px solid #10b981;"></span>Query Path</span>
+          <span><span class="swatch" style="background:#fee2e2;border:1px solid #ef4444;"></span>Frontend</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOURCES -->
+    <section id="sources">
+      <div class="section-head">
+        <span class="section-num">03</span>
+        <h2>Five Sources, Five Collections</h2>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:18%;">Collection</th>
+            <th style="width:18%;">Source</th>
+            <th>Chunk strategy</th>
+            <th>Key metadata</th>
+            <th style="width:10%;">Complexity</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>selenium_code</code></td>
+            <td>Selenium Java repo</td>
+            <td>tree-sitter-java; one chunk per <em>method</em> or top-level class.</td>
+            <td>path, package, symbol, kind, start_line, end_line</td>
+            <td><span class="badge amber">Med</span></td>
+          </tr>
+          <tr>
+            <td><code>playwright_code</code></td>
+            <td>Playwright TS repo</td>
+            <td>tree-sitter-typescript; per fn/class + each <code>test()</code> block.</td>
+            <td>path, kind, symbol, test_title, lines</td>
+            <td><span class="badge amber">Med</span></td>
+          </tr>
+          <tr>
+            <td><code>vwo_testcases</code></td>
+            <td>CSV · 100 TCs</td>
+            <td>Row-aware: 1 TC = 1 chunk (sliding-window if &gt; 1000 chars).</td>
+            <td>tc_id, jira_id, module, priority, severity, sprint, status, owner</td>
+            <td><span class="badge green">Low</span></td>
+          </tr>
+          <tr>
+            <td><code>vwo_docs</code></td>
+            <td>PDFs (PRDs)</td>
+            <td>PyMuPDF page text → 800/120 sliding window. Skip pages &lt; 50 chars.</td>
+            <td>doc_title, page, source_path</td>
+            <td><span class="badge green">Low</span></td>
+          </tr>
+          <tr>
+            <td><code>vwo_bugs</code></td>
+            <td>JIRA MD exports</td>
+            <td>Parse JIRA header (Status / Priority / Reporter / …); chunk body.</td>
+            <td>jira_id, status, priority, reporter, assignee, summary, created</td>
+            <td><span class="badge green">Low</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        Every collection uses <strong>named vectors</strong> — <code>dense</code> (1024d cosine) and
+        <code>sparse</code> (BM25-style lexical weights). One Qdrant point holds both, retrieved
+        independently and fused with RRF.
+      </div>
+    </section>
+
+    <!-- FLOW -->
+    <section id="flow">
+      <div class="section-head">
+        <span class="section-num">04</span>
+        <h2>Query Pipeline · 6 Stages</h2>
+      </div>
+
+      <div class="pipeline">
+        <div class="stage"><div class="step">STAGE 01</div><div class="name">Rewrite</div><div class="det">Condense follow-ups + last N turns into one standalone query (Groq).</div></div>
+        <div class="stage"><div class="step">STAGE 02</div><div class="name">Route</div><div class="det">Classifier picks 1–2 collections from the 5. UI can override.</div></div>
+        <div class="stage"><div class="step">STAGE 03</div><div class="name">Hybrid Search</div><div class="det">Dense + sparse query → top-K per collection → RRF fuse (k=60).</div></div>
+        <div class="stage"><div class="step">STAGE 04</div><div class="name">Rerank</div><div class="det">bge-reranker-v2-m3 cross-encoder over top-12 → top-4.</div></div>
+        <div class="stage"><div class="step">STAGE 05</div><div class="name">Compose</div><div class="det">Tag chunks <code>&lt;doc id="1" src="…"&gt;</code> + system prompt.</div></div>
+        <div class="stage"><div class="step">STAGE 06</div><div class="name">Stream</div><div class="det">Groq → SSE tokens. Inline <code>[n]</code> citations resolved client-side.</div></div>
+      </div>
+
+      <h3>How RRF works (k=60)</h3>
+      <pre class="language-python"><code>def rrf(rank_lists, k=60):
+    score = {}
+    for ranked in rank_lists:
+        for r, doc_id in enumerate(ranked, start=1):
+            score[doc_id] = score.get(doc_id, 0.0) + 1.0 / (k + r)
+    return sorted(score.items(), key=lambda t: t[1], reverse=True)
+</code></pre>
+      <p style="font-size:14px; color:var(--text-soft);">Each list contributes <code>1/(60+rank)</code>.
+        A doc ranked #1 in two lists scores higher than a doc ranked #1 in one list and
+        absent in the other — that's the rank-fusion intuition.</p>
+    </section>
+
+    <!-- EXPLORER -->
+    <section id="explorer">
+      <div class="section-head">
+        <span class="section-num">05</span>
+        <h2>RAG Explorer — Debug Every Answer</h2>
+        <span class="badge cyan">Debugger</span>
+      </div>
+
+      <div class="card">
+        <p style="margin-top:0;">
+          The Explorer is a second UI mode that runs the same query but returns
+          <strong>the entire trace</strong> instead of streaming an answer.
+          Every stage of the pipeline is rendered as an expandable card.
+          Use it to answer: <em>Why did the LLM say that? Which chunks did it actually see?
+          Did the router pick the right collections?</em>
+        </p>
+
+        <h3 style="margin-top:14px;">What it shows, per query</h3>
+        <table>
+          <thead><tr><th>Panel</th><th>Content</th><th>What you learn</th></tr></thead>
+          <tbody>
+            <tr><td>① Query Rewrite</td><td>Original question · last N chat turns · rewritten standalone query.</td><td>Whether history hurt or helped retrieval.</td></tr>
+            <tr><td>② Router Decision</td><td>Classifier output: <code>[selenium_code, vwo_testcases]</code> + a 1-line reason.</td><td>Whether the right collections were searched.</td></tr>
+            <tr><td>③ Per-Collection Hits</td><td>Top-K dense hits, top-K sparse hits, with payload preview &amp; score.</td><td>Which retrieval mode pulled which chunk.</td></tr>
+            <tr><td>④ RRF Fused</td><td>Combined ranking, fused score, source ranks per list.</td><td>How fusion changed the order.</td></tr>
+            <tr><td>⑤ Rerank</td><td>Cross-encoder score per candidate, before/after order.</td><td>Whether rerank rescued or hurt a chunk.</td></tr>
+            <tr><td>⑥ Final Context</td><td>The exact text blocks sent to the LLM, tagged <code>&lt;doc id="…"&gt;</code>.</td><td>The ground truth the LLM actually saw.</td></tr>
+            <tr><td>⑦ LLM Call</td><td>System prompt · user message · model · temperature · token usage.</td><td>Exactly what was generated and on what basis.</td></tr>
+            <tr><td>⑧ Answer + Citations</td><td>Streamed answer with <code>[n]</code> chips that scroll source cards into view.</td><td>End-to-end trace of how the answer maps to chunks.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Sample trace JSON shape</h3>
+        <pre class="language-typescript"><code>type Trace = {
+  query: { original: string; history: Turn[]; rewritten: string };
+  router: { collections: string[]; reason: string };
+  per_collection: Record&lt;string, {
+    dense_hits: Hit[]; sparse_hits: Hit[]; fused: FusedHit[];
+  }&gt;;
+  rerank: { input: FusedHit[]; output: RerankedHit[] };
+  context: { blocks: { id: number; source: string; text: string }[] };
+  llm: { model: string; temperature: number; system: string;
+         user: string; usage: { prompt: number; completion: number }; };
+  answer: { text: string; citations: number[] };
+  timings_ms: Record&lt;string, number&gt;;
+};</code></pre>
+
+        <div class="callout warn">
+          <strong>Practical use:</strong> if a question returns a wrong answer, switch to
+          Explorer, replay it. 9 times out of 10 the bug is upstream of the LLM —
+          wrong router pick, missing chunk, bad rerank.
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPONENTS -->
+    <section id="components">
+      <div class="section-head">
+        <span class="section-num">06</span>
+        <h2>Components</h2>
+      </div>
+
+      <div class="grid-3">
+        <div class="comp">
+          <div class="icon">A</div>
+          <h4>FastAPI Backend</h4>
+          <div class="role">Service Layer</div>
+          <p>Async HTTP. Endpoints: <code>/api/chat</code> (SSE), <code>/api/explore</code>,
+          <code>/api/health</code>, <code>/api/ingest/*</code>. CORS enabled for the Vite dev server.</p>
+        </div>
+        <div class="comp">
+          <div class="icon">B</div>
+          <h4>BGE-M3 Embedder</h4>
+          <div class="role">Embedding Model</div>
+          <p>Single model emits both dense (1024d) and sparse vectors. FlagEmbedding loader,
+          fp16 by default, threaded singleton for hot reuse.</p>
+        </div>
+        <div class="comp">
+          <div class="icon">C</div>
+          <h4>Qdrant Store</h4>
+          <div class="role">Vector DB</div>
+          <p>Embedded file mode by default (<code>./qdrant_data</code>). 5 collections, named-vectors
+          schema. Optional HTTP server mode via <code>QDRANT_URL</code>.</p>
+        </div>
+        <div class="comp">
+          <div class="icon">D</div>
+          <h4>tree-sitter Chunkers</h4>
+          <div class="role">Code Ingest</div>
+          <p>Java + TypeScript grammars produce per-symbol chunks with file path,
+          package, line span, kind. Fallback skips unparsable files.</p>
+        </div>
+        <div class="comp">
+          <div class="icon">E</div>
+          <h4>Row-Aware Chunker</h4>
+          <div class="role">Test-Case Ingest</div>
+          <p>Ported from Chapter 8 Advance RAG: 1 TC = 1 chunk, field-labeled,
+          oversize rows fall back to overlap-windowed chunks.</p>
+        </div>
+        <div class="comp">
+          <div class="icon">F</div>
+          <h4>PDF / JIRA Parser</h4>
+          <div class="role">Docs Ingest</div>
+          <p>PyMuPDF page-by-page, skip empty pages with a JSON skip report.
+          JIRA MD parser extracts header fields into structured metadata.</p>
+        </div>
+        <div class="comp">
+          <div class="icon">G</div>
+          <h4>Intent Router</h4>
+          <div class="role">Routing</div>
+          <p>One Groq classifier call returns selected collections + a short reason
+          (used by the Explorer). UI can override.</p>
+        </div>
+        <div class="comp">
+          <div class="icon">H</div>
+          <h4>Hybrid Retriever + RRF</h4>
+          <div class="role">Retrieval</div>
+          <p>Dense and sparse top-K per selected collection, fused via Reciprocal
+          Rank Fusion (k=60). Returns top-12 candidates.</p>
+        </div>
+        <div class="comp">
+          <div class="icon">I</div>
+          <h4>BGE Reranker v2-m3</h4>
+          <div class="role">Reranking</div>
+          <p>Cross-encoder scoring (question, candidate). Cuts top-12 to top-4
+          before answer composition. Lifts factual precision noticeably.</p>
+        </div>
+        <div class="comp">
+          <div class="icon">J</div>
+          <h4>Groq · gpt-oss-120b</h4>
+          <div class="role">LLM</div>
+          <p>Streaming chat completion. Answer mode (cited) or generate mode
+          (drafts a new TC from style exemplars).</p>
+        </div>
+        <div class="comp">
+          <div class="icon">K</div>
+          <h4>React Chat UI</h4>
+          <div class="role">Frontend</div>
+          <p>Vite + TS + Tailwind. SSE consumer renders markdown, inline <code>[n]</code>
+          chips scroll source cards. Multi-turn memory.</p>
+        </div>
+        <div class="comp">
+          <div class="icon">L</div>
+          <h4>RAG Explorer Page</h4>
+          <div class="role">Debug UI</div>
+          <p>Replays any query and renders the full trace as expandable stage cards
+          (rewrite → route → hits → fuse → rerank → context → LLM → answer).</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCHEMAS -->
+    <section id="schemas">
+      <div class="section-head">
+        <span class="section-num">07</span>
+        <h2>Chunk Payload Schemas</h2>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4 style="margin-top:0;">selenium_code / playwright_code</h4>
+<pre class="language-typescript"><code>{
+  chunk_id: string,        // path:start-end:kind:symbol
+  text: string,            // raw source slice
+  collection: "selenium_code" | "playwright_code",
+  language: "java" | "typescript",
+  repo: "selenium" | "playwright",
+  path: string,            // relative to repo root
+  package?: string,        // java only
+  kind: "class" | "method" | "constructor" |
+        "function" | "test" | "interface" | "enum",
+  symbol: string,
+  qualified?: string,      // ClassName.method
+  test_title?: string,     // playwright test() arg
+  start_line: number,
+  end_line: number,
+}</code></pre>
+        </div>
+        <div class="card">
+          <h4 style="margin-top:0;">vwo_testcases</h4>
+<pre class="language-typescript"><code>{
+  chunk_id: string,        // r{row}-c{idx}
+  text: string,            // field-labeled assembled doc
+  collection: "vwo_testcases",
+  test_case_id: string,    // TC-00001
+  jira_id: string,         // VWO-2989
+  module: string,          // Reports / Editor / Admin / …
+  priority: "P0" | "P1" | "P2" | "P3",
+  severity: string,
+  labels: string,          // pipe-joined tags
+  sprint: string,
+  status: string,
+  owner: string,
+  test_type: "Functional" | "UI" | …,
+  source_file: string,
+}</code></pre>
+        </div>
+        <div class="card">
+          <h4 style="margin-top:0;">vwo_docs (PDF)</h4>
+<pre class="language-typescript"><code>{
+  chunk_id: string,        // {stem}-p{page}-c{idx}
+  text: string,
+  collection: "vwo_docs",
+  doc_title: string,
+  page: number,
+  source_path: string,
+  kind: "pdf_page",
+}</code></pre>
+        </div>
+        <div class="card">
+          <h4 style="margin-top:0;">vwo_bugs (JIRA MD)</h4>
+<pre class="language-typescript"><code>{
+  chunk_id: string,        // jira-{id}-c{idx}
+  text: string,            // "Summary: …\n\n{description body}"
+  collection: "vwo_bugs",
+  jira_id: string,         // VWO-33
+  summary: string,
+  status: string,          // To Do / In Progress / Done
+  priority: string,
+  type: string,            // Bug / Task
+  reporter: string,
+  assignee?: string,
+  labels?: string,
+  created: string,
+  updated: string,
+  source_file: string,
+  kind: "jira_bug",
+}</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- RUN -->
+    <section id="run">
+      <div class="section-head">
+        <span class="section-num">08</span>
+        <h2>Run It Locally</h2>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0;">1. Clone source repos</h4>
+<pre class="language-bash"><code>cd Chapter_09_Project_QACopilot
+git clone https://github.com/PramodDutta/ATB14xSeleniumAdvanceFrameworks data/selenium_repo
+git clone https://github.com/PramodDutta/Advance-Playwright-Framework  data/playwright_repo</code></pre>
+
+        <h4>2. Backend</h4>
+<pre class="language-bash"><code>python -m venv .venv && source .venv/bin/activate
+pip install -r backend/requirements.txt
+cp .env.example .env       # set GROQ_API_KEY
+python -m backend.ingest.ingest_all
+uvicorn backend.main:app --reload --port 8000</code></pre>
+
+        <h4>3. Frontend</h4>
+<pre class="language-bash"><code>cd frontend && npm install && npm run dev
+# Browser → http://localhost:5173</code></pre>
+
+        <h4>4. Smoke questions, one per collection</h4>
+        <table>
+          <thead><tr><th>Collection</th><th>Question</th></tr></thead>
+          <tbody>
+            <tr><td><code>selenium_code</code></td><td>"Show the BasePage waitForElement implementation"</td></tr>
+            <tr><td><code>playwright_code</code></td><td>"How is the login fixture set up in Playwright?"</td></tr>
+            <tr><td><code>vwo_testcases</code></td><td>"List P0 Blocker test cases for the Admin module"</td></tr>
+            <tr><td><code>vwo_docs</code></td><td>"What does the PRD say about login dashboard auth flow?"</td></tr>
+            <tr><td><code>vwo_bugs</code></td><td>"Show open bugs related to login failures"</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SCHEDULER -->
+    <section id="scheduler">
+      <div class="section-head">
+        <span class="section-num">09</span>
+        <h2>Hourly Scheduler</h2>
+        <span class="badge cyan">APScheduler</span>
+      </div>
+
+      <div class="card">
+        <p style="margin-top:0;">
+          A separate process re-indexes Qdrant on a fixed cadence (default every <strong>60 minutes</strong>).
+          Wraps the same five <code>ingest_*.run()</code> functions used by <code>ingest_all.py</code>,
+          inside an APScheduler <code>BlockingScheduler</code>. No extra services — one Python process,
+          configurable from <code>.env</code>.
+        </p>
+
+        <h3>Env knobs</h3>
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>INGEST_INTERVAL_MINUTES</code></td><td><code>60</code></td><td>Minutes between cycles in long-lived mode.</td></tr>
+            <tr><td><code>INGEST_AT_STARTUP</code></td><td><code>true</code></td><td>Run one cycle immediately, then loop.</td></tr>
+            <tr><td><code>INGEST_TARGETS</code></td><td><code>selenium,playwright,testcases,pdfs,jira</code></td><td>Comma-separated subset of pipelines.</td></tr>
+            <tr><td><code>INGEST_RECREATE</code></td><td><code>false</code></td><td>Drop &amp; rebuild collections each cycle (expensive).</td></tr>
+            <tr><td><code>INGEST_LOCK_FILE</code></td><td><code>./data/.ingest.lock</code></td><td>Skips overlapping cycles via O_CREAT|O_EXCL.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Two run modes</h3>
+        <pre class="language-bash"><code># A) Long-lived in-process loop (foreground or backgrounded with nohup / systemd):
+python -m scheduler.run
+
+# B) One-shot for cron / launchd / systemd timers:
+python -m scheduler.run --once
+
+# Override targets for a single run:
+INGEST_TARGETS=testcases,jira python -m scheduler.run --once</code></pre>
+
+        <h3>Linux systemd timer (recommended for VPS)</h3>
+        <pre class="language-bash"><code># /etc/systemd/system/qacopilot-ingest.service
+[Unit]
+Description=QA Copilot ingest one-shot
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/qacopilot/Chapter_09_Project_QACopilot
+ExecStart=/opt/qacopilot/Chapter_09_Project_QACopilot/.venv/bin/python -m scheduler.run --once
+User=qacopilot
+
+# /etc/systemd/system/qacopilot-ingest.timer
+[Unit]
+Description=Run QA Copilot ingest every hour
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1h
+Unit=qacopilot-ingest.service
+
+[Install]
+WantedBy=timers.target
+
+# Enable
+sudo systemctl daemon-reload
+sudo systemctl enable --now qacopilot-ingest.timer</code></pre>
+
+        <div class="callout warn">
+          <strong>Single-process Qdrant gotcha.</strong> The default file-store is single-process —
+          ingest running inside the API process would block requests; sibling processes will race
+          on the file lock. Either run ingest only when the API is stopped, or switch both to
+          HTTP mode by setting <code>QDRANT_URL</code>. See <code>scheduler/README.md</code>.
+        </div>
+      </div>
+    </section>
+
+    <!-- DEPLOY -->
+    <section id="deploy">
+      <div class="section-head">
+        <span class="section-num">10</span>
+        <h2>Deployment Guide — VPS · AWS · DO · GCP</h2>
+        <span class="badge green">Ops</span>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">Reference architecture (production)</h3>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart LR
+  C[Browser] -->|HTTPS| N[Nginx / Caddy<br/>TLS, gzip]
+  N -->|/api/*| API[uvicorn FastAPI<br/>backend.main:app]
+  N -->|/| FE[React static build<br/>frontend/dist]
+  API --> Q[Qdrant<br/>HTTP server :6333]
+  S[systemd timer<br/>scheduler.run --once] --> Q
+  G[Groq API] -.-> API
+  H[Hugging Face Hub] -.-> API
+
+  classDef edge fill:#fef3c7,stroke:#f59e0b;
+  classDef app fill:#cffafe,stroke:#06b6d4;
+  classDef store fill:#dcfce7,stroke:#10b981;
+  class C,N edge;
+  class API,FE,S app;
+  class Q,G,H store;
+          </pre>
+        </div>
+
+        <h3>Sizing</h3>
+        <table>
+          <thead><tr><th>Tier</th><th>Specs</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Demo / single-user</td><td>2 vCPU · 4 GB RAM · 20 GB</td><td>CPU embeddings ok for &lt; 5k chunks. Cold start ~60s.</td></tr>
+            <tr><td>Team (recommended)</td><td>4 vCPU · 8–16 GB RAM · 40 GB</td><td>BGE-M3 + reranker comfortable. Up to ~50k chunks.</td></tr>
+            <tr><td>GPU (optional)</td><td>+ 1× T4 / L4</td><td>10× faster ingest &amp; rerank. Set <code>BGE_USE_FP16=1</code>.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Step 1 — Provision a VPS (any provider)</h3>
+        <p style="font-size:14px; color:var(--text-soft); margin-top:0;">
+          Pick Ubuntu 22.04 LTS or 24.04 LTS. Open ports <strong>22 (SSH)</strong> and
+          <strong>443 (HTTPS)</strong> only. Keep <strong>8001 (FastAPI)</strong>,
+          <strong>6333 (Qdrant)</strong> and <strong>5173 (Vite)</strong> internal.
+        </p>
+
+        <div class="grid-2">
+          <div>
+            <h4 style="margin-top:0;">DigitalOcean</h4>
+<pre class="language-bash"><code>doctl compute droplet create qacopilot \
+  --image ubuntu-24-04-x64 \
+  --size s-4vcpu-8gb \
+  --region blr1 \
+  --ssh-keys $SSH_KEY_ID \
+  --enable-monitoring</code></pre>
+          </div>
+          <div>
+            <h4 style="margin-top:0;">AWS EC2</h4>
+<pre class="language-bash"><code>aws ec2 run-instances \
+  --image-id ami-0c7217cdde317cfec \
+  --instance-type t3.large \
+  --key-name $KEY \
+  --security-group-ids $SG \
+  --block-device-mappings \
+    'DeviceName=/dev/sda1,Ebs={VolumeSize=40,VolumeType=gp3}'</code></pre>
+          </div>
+          <div>
+            <h4 style="margin-top:0;">GCP Compute Engine</h4>
+<pre class="language-bash"><code>gcloud compute instances create qacopilot \
+  --machine-type=e2-standard-4 \
+  --image-family=ubuntu-2404-lts \
+  --image-project=ubuntu-os-cloud \
+  --boot-disk-size=40GB \
+  --zone=asia-south1-a</code></pre>
+          </div>
+          <div>
+            <h4 style="margin-top:0;">Generic VPS (Hetzner / Linode / Vultr)</h4>
+<pre class="language-bash"><code># Via web UI: 4 vCPU / 8 GB RAM / Ubuntu 24.04
+ssh root@$IP
+adduser qacopilot && usermod -aG sudo qacopilot
+ufw allow OpenSSH && ufw allow 'Nginx Full' && ufw enable</code></pre>
+          </div>
+        </div>
+
+        <h3>Step 2 — System bootstrap</h3>
+<pre class="language-bash"><code>sudo apt update && sudo apt install -y \
+  python3.12 python3.12-venv python3-pip \
+  build-essential git curl nginx ca-certificates
+
+# Node 20 for the frontend build
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
+sudo apt install -y nodejs
+
+# App user + checkout
+sudo mkdir -p /opt/qacopilot && sudo chown $USER /opt/qacopilot
+cd /opt/qacopilot
+git clone https://github.com/&lt;you&gt;/AITesterBlueprint2x .
+cd Chapter_09_Project_QACopilot
+git clone --depth 1 https://github.com/PramodDutta/ATB14xSeleniumAdvanceFrameworks data/selenium_repo
+git clone --depth 1 https://github.com/PramodDutta/Advance-Playwright-Framework  data/playwright_repo</code></pre>
+
+        <h3>Step 3 — Backend</h3>
+<pre class="language-bash"><code>cd /opt/qacopilot/Chapter_09_Project_QACopilot
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+cp .env.example .env
+# Edit .env: set GROQ_API_KEY=...   set QDRANT_URL=http://127.0.0.1:6333
+
+# First-time ingest while Qdrant is reachable:
+python -m backend.ingest.ingest_all</code></pre>
+
+        <h3>Step 4 — Qdrant in HTTP mode (Docker)</h3>
+<pre class="language-bash"><code>sudo apt install -y docker.io
+sudo systemctl enable --now docker
+sudo docker run -d --name qdrant --restart=always \
+  -p 127.0.0.1:6333:6333 \
+  -v /opt/qacopilot/qdrant_storage:/qdrant/storage \
+  qdrant/qdrant:latest</code></pre>
+
+        <h3>Step 5 — systemd unit for FastAPI</h3>
+<pre class="language-bash"><code># /etc/systemd/system/qacopilot-api.service
+[Unit]
+Description=QA Copilot FastAPI
+After=network-online.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=qacopilot
+WorkingDirectory=/opt/qacopilot/Chapter_09_Project_QACopilot
+EnvironmentFile=/opt/qacopilot/Chapter_09_Project_QACopilot/.env
+ExecStart=/opt/qacopilot/Chapter_09_Project_QACopilot/.venv/bin/uvicorn \
+  backend.main:app --host 127.0.0.1 --port 8001 --workers 2
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+# Enable
+sudo systemctl daemon-reload
+sudo systemctl enable --now qacopilot-api</code></pre>
+
+        <h3>Step 6 — Build &amp; serve the frontend</h3>
+<pre class="language-bash"><code>cd /opt/qacopilot/Chapter_09_Project_QACopilot/frontend
+npm ci
+npm run build           # outputs to frontend/dist/
+
+# Nginx serves dist/ as static files and proxies /api to FastAPI</code></pre>
+
+        <h3>Step 7 — Nginx + HTTPS (Let's Encrypt)</h3>
+<pre class="language-bash"><code># /etc/nginx/sites-available/qacopilot.conf
+server {
+    server_name copilot.example.com;
+    listen 80;
+
+    root /opt/qacopilot/Chapter_09_Project_QACopilot/frontend/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Standard JSON endpoints
+    location /api/ {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_set_header Host $host;
+    }
+
+    # SSE streaming chat - disable buffering, longer timeout
+    location /api/chat {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_set_header Host $host;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_set_header Connection "";
+        chunked_transfer_encoding on;
+    }
+
+    # Static KT page
+    location /KT/ {
+        alias /opt/qacopilot/Chapter_09_Project_QACopilot/KT/;
+    }
+}
+
+sudo ln -s /etc/nginx/sites-available/qacopilot.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d copilot.example.com</code></pre>
+
+        <h3>Step 8 — Schedule hourly ingest</h3>
+<pre class="language-bash"><code># Drop the systemd timer from section 09 (qacopilot-ingest.timer) into place
+sudo systemctl daemon-reload
+sudo systemctl enable --now qacopilot-ingest.timer
+sudo systemctl list-timers | grep qacopilot</code></pre>
+
+        <h3>Operational notes</h3>
+        <ul style="font-size:14px; color:var(--text-soft);">
+          <li><strong>Secrets:</strong> store <code>GROQ_API_KEY</code> in <code>.env</code> (chmod 600), <em>not</em> in <code>.env.example</code>. For AWS/GCP use Secrets Manager / Secret Manager and inject via <code>EnvironmentFile</code> rendered at deploy time.</li>
+          <li><strong>Backups:</strong> snapshot <code>/opt/qacopilot/qdrant_storage</code> nightly. Re-ingest is the disaster-recovery fallback (idempotent).</li>
+          <li><strong>Updates:</strong> <code>git pull &amp;&amp; pip install -r backend/requirements.txt &amp;&amp; npm run build &amp;&amp; systemctl restart qacopilot-api</code>.</li>
+          <li><strong>Observability:</strong> <code>journalctl -u qacopilot-api -f</code> · <code>tail -f data/_scheduler.log</code> · UI <code>/status</code> page.</li>
+          <li><strong>GPU instance (optional):</strong> AWS <code>g5.xlarge</code> / GCP <code>n1-standard-4 + T4</code>. Add <code>nvidia-container-toolkit</code> for Docker; install CUDA-enabled PyTorch wheel.</li>
+          <li><strong>Container alternative:</strong> wrap FastAPI in a Dockerfile with the venv baked in; deploy to AWS ECS Fargate / GCP Cloud Run (1 vCPU min, set request timeout to 300s for SSE).</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- TRADEOFFS -->
+    <section id="tradeoffs">
+      <div class="section-head">
+        <span class="section-num">11</span>
+        <h2>Design Trade-offs (so future-you remembers)</h2>
+      </div>
+
+      <table>
+        <thead><tr><th>Decision</th><th>Why this</th><th>What we gave up</th></tr></thead>
+        <tbody>
+          <tr><td>5 collections, not 1</td><td>Cleaner routing, smaller candidate sets, tunable per source.</td><td>Have to maintain N ingest scripts.</td></tr>
+          <tr><td>BGE-M3 dense + sparse</td><td>One model, two retrieval modes. Sparse rescues code/JIRA-id queries dense often misses.</td><td>~2GB first-load download, slower cold start.</td></tr>
+          <tr><td>Cross-encoder rerank</td><td>Big precision lift on the top-4 the LLM actually sees.</td><td>~150ms extra per query.</td></tr>
+          <tr><td>LLM router (not user dropdown)</td><td>Zero-friction UX; explorer shows the decision so it's never magic.</td><td>~150ms small Groq call per query.</td></tr>
+          <tr><td>Qdrant embedded mode</td><td>No Docker, no server. Single-binary setup for the chapter.</td><td>One process at a time on the file store.</td></tr>
+          <tr><td>tree-sitter, not regex</td><td>Real AST → reliable per-method chunks. Survives reformats.</td><td>Adds two grammar wheels.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <strong>Pedagogy:</strong> this chapter is the capstone of the RAG track —
+        Chapter 8 Basic (ChromaDB + Nomic) → Chapter 8 Advance (Qdrant + BGE-M3 hybrid) →
+        Chapter 9 QA Copilot (multi-collection + router + explorer). Each step adds one
+        production concern: hybrid retrieval, then rerank, then routing, then transparency.
+      </div>
+    </section>
+
+  </main>
+
+</div>
+
+<footer>
+  <div class="author">Author: Pramod Dutta · Principal SDET</div>
+  <div>The Testing Academy · AI Tester Blueprint 2x · 2026 Edition</div>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    themeVariables: {
+      primaryColor: '#cffafe',
+      primaryBorderColor: '#06b6d4',
+      primaryTextColor: '#0f172a',
+      lineColor: '#94a3b8',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    },
+    flowchart: { curve: 'basis', htmlLabels: true, padding: 12 }
+  });
+
+  // Sidebar active link tracking
+  const links = document.querySelectorAll('.sidebar a');
+  const sections = [...document.querySelectorAll('section[id]')];
+  const setActive = () => {
+    const top = window.scrollY + 100;
+    let cur = sections[0]?.id;
+    for (const s of sections) if (s.offsetTop <= top) cur = s.id;
+    links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + cur));
+  };
+  window.addEventListener('scroll', setActive, { passive: true });
+  setActive();
+</script>
+
+</body>
+</html>

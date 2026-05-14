@@ -1,0 +1,12 @@
+data/
+temp_repos/
+qdrant_data/
+__pycache__/
+*.pyc
+.env
+node_modules/
+dist/
+*.tsbuildinfo
+*_server*.log
+.venv/
+venv/

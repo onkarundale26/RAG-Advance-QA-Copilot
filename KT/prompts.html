@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QA Copilot — Build Conversation Transcript | The Testing Academy</title>
+<meta name="description" content="Full prompt-by-prompt build conversation that produced the QA Copilot project. Captures every user prompt and the assistant's actions and decisions." />
+
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #fafafa;
+    --bg-card: #f3f4f6;
+    --bg-card-2: #f9fafb;
+    --border: #e5e7eb;
+    --text: #111827;
+    --text-soft: #4b5563;
+    --text-muted: #6b7280;
+    --accent: #06b6d4;
+    --accent-strong: #0891b2;
+    --accent-soft: #cffafe;
+    --user: #0e7490;
+    --user-bg: #ecfeff;
+    --asst: #1f2937;
+    --asst-bg: #f3f4f6;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "JetBrains Mono", Menlo, Monaco, "Courier New", monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font-sans); line-height: 1.65; }
+  a { color: var(--accent-strong); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 1080px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 24px; gap: 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+  .brand .dot {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    display: grid; place-items: center; color: white; font-size: 14px;
+    box-shadow: 0 2px 6px rgba(6,182,212,0.35);
+  }
+  .nav { display: flex; gap: 22px; font-size: 14px; color: var(--text-soft); }
+  .nav a:hover { color: var(--accent-strong); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; color: var(--accent-strong); background: var(--accent-soft); font-weight: 600; }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 24px 96px; }
+
+  .hero { padding: 28px 30px; border: 1px solid var(--border); border-radius: 14px; margin-bottom: 28px;
+          background: radial-gradient(800px 200px at 100% 0%, rgba(6,182,212,0.10), transparent 60%), linear-gradient(180deg, #fff, #fbfeff); }
+  .hero h1 { margin: 0 0 8px; font-size: 30px; letter-spacing: -0.015em; }
+  .hero p { margin: 0; color: var(--text-soft); font-size: 16px; max-width: 760px; }
+  .crumb { font-size: 12px; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+
+  .toc { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-bottom: 24px; font-size: 14px; }
+  .toc strong { display: block; margin-bottom: 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc li { margin: 2px 0; color: var(--text-soft); }
+  .toc a { color: var(--text-soft); }
+  .toc a:hover { color: var(--accent-strong); }
+
+  .turn { margin: 22px 0; padding: 0; border-left: 3px solid var(--accent-soft); padding-left: 18px; scroll-margin-top: 80px; }
+  .turn .role { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .turn.user .role { color: var(--user); }
+  .turn.asst .role { color: var(--text-muted); }
+  .turn.user { border-left-color: var(--user); }
+  .turn h3 { margin: 6px 0 10px; font-size: 18px; }
+
+  .bubble { padding: 14px 16px; border-radius: 12px; font-size: 15px; }
+  .bubble.user { background: var(--user-bg); color: var(--user); border: 1px solid #a5f3fc; }
+  .bubble.asst { background: var(--asst-bg); color: var(--asst); border: 1px solid var(--border); }
+
+  .bubble p { margin: 0.4rem 0; }
+  .bubble ul, .bubble ol { padding-left: 1.4rem; margin: 0.5rem 0; }
+  .bubble li { margin: 0.2rem 0; }
+  .bubble code:not(pre code) { font-family: var(--font-mono); font-size: 0.92em; background: rgba(15,23,42,0.06); padding: 1px 6px; border-radius: 4px; color: var(--text); }
+  .bubble pre { background: #0f172a; color: #e2e8f0; padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 12.5px; margin: 0.5rem 0; }
+  .bubble pre code { background: transparent; padding: 0; color: inherit; font-family: var(--font-mono); }
+  .bubble blockquote { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 6px 12px; border-radius: 4px; color: #155e75; margin: 0.5rem 0; }
+  .bubble table { border-collapse: collapse; font-size: 13px; margin: 0.4rem 0; }
+  .bubble th, .bubble td { border: 1px solid var(--border); padding: 5px 9px; text-align: left; }
+  .bubble th { background: var(--bg-card-2); }
+
+  .chip { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); border: 1px solid #a5f3fc; margin-right: 6px; font-weight: 600; }
+  .meta { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 32px; padding: 24px; text-align: center; font-size: 13px; color: var(--text-muted); }
+  footer .author { color: var(--text-soft); font-weight: 600; }
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="dot">QA</div>
+      <span>QA Copilot · Build Transcript</span>
+      <span class="pill">prompts.html</span>
+    </div>
+    <div class="nav">
+      <a href="./index.html">← KT Doc</a>
+      <a href="../README.md">README</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="crumb">AI Tester Blueprint 2x · Chapter 09 · Conversation Transcript</div>
+    <h1>How QA Copilot was built — prompt by prompt.</h1>
+    <p>The complete user/assistant exchange that scaffolded this chapter from an empty folder
+       to a running multi-source RAG copilot with a debugging Explorer, an hourly scheduler,
+       and a deployment guide. Useful as a worked example of design-first AI pair-coding.</p>
+  </div>
+
+  <div class="toc">
+    <strong>Turns</strong>
+    <ol>
+      <li><a href="#t1">Open the chapter folder</a></li>
+      <li><a href="#t2">Plan: which RAG, which DB, which UI?</a></li>
+      <li><a href="#t3">Source data added — recheck folders</a></li>
+      <li><a href="#t4">Approve plan → build the project</a></li>
+      <li><a href="#t5">Add a RAG Explorer + KT page (theme matched)</a></li>
+      <li><a href="#t6">Spawn an agent for the hourly ingest scheduler</a></li>
+      <li><a href="#t7">Run it: ingest + start backend + frontend</a></li>
+      <li><a href="#t8">Two bugs: token doubling + code formatting</a></li>
+      <li><a href="#t9">Update README + commit + push + screenshot</a></li>
+      <li><a href="#t10">Save this conversation as prompts.html</a></li>
+    </ol>
+  </div>
+
+  <!-- T1 -->
+  <section id="t1" class="turn user">
+    <div class="role">Turn 1 · User</div>
+    <div class="bubble user">
+      <p><code>/Users/promode/Documents/AITesterBlueprint2x/Chapter_09_Project_QACopilot</code></p>
+      <p>We will be working in this directory.</p>
+    </div>
+  </section>
+  <section class="turn asst">
+    <div class="role">Assistant</div>
+    <div class="bubble asst">
+      <p>Acknowledged. Working dir set. Ready for the task.</p>
+    </div>
+  </section>
+
+  <section id="t1b" class="turn user">
+    <div class="role">Turn 1 (cont.) · User</div>
+    <div class="bubble user">
+      <p>Run <code>/init</code>. Analyze the codebase and create a <code>CLAUDE.md</code> file for future Claude Code sessions.</p>
+    </div>
+  </section>
+  <section class="turn asst">
+    <div class="role">Assistant</div>
+    <div class="bubble asst">
+      <p>Folder is empty. Three options:</p>
+      <ol>
+        <li>Tell me the project scope → scaffold + write CLAUDE.md.</li>
+        <li>Add code first, then re-run <code>/init</code>.</li>
+        <li>Create a stub CLAUDE.md (near-zero useful guidance without code).</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- T2 -->
+  <section id="t2" class="turn user">
+    <div class="role">Turn 2 · User</div>
+    <div class="bubble user">
+      <p>I have:</p>
+      <ul>
+        <li>Selenium and Playwright source repos</li>
+        <li>~5,000 VWO test cases</li>
+        <li>VWO PDFs (some empty, some with JIRA summaries)</li>
+      </ul>
+      <p>Build a <strong>QA Copilot</strong> with Groq <code>openai/gpt-oss-120b</code>. Pick the right RAG,
+         vector DB (Qdrant or Chroma), and frontend. <strong>Ask me clarifying questions</strong> until the design is locked.</p>
+    </div>
+  </section>
+  <section class="turn asst">
+    <div class="role">Assistant</div>
+    <div class="bubble asst">
+      <p>Explored Chapter 8 first to match the repo's style. Then asked four rounds of multi-choice questions:</p>
+      <table>
+        <thead><tr><th>Decision</th><th>User pick</th></tr></thead>
+        <tbody>
+          <tr><td>Frontend</td><td>React + Vite + Tailwind</td></tr>
+          <tr><td>Vector DB + embedder</td><td>Qdrant + bge-m3 + bge-reranker-v2-m3</td></tr>
+          <tr><td>Collections layout</td><td>One per source, LLM router decides</td></tr>
+          <tr><td>Source paths</td><td>User will provide</td></tr>
+          <tr><td>Backend</td><td>FastAPI</td></tr>
+          <tr><td>Code chunking</td><td>AST-aware (tree-sitter)</td></tr>
+          <tr><td>PDF intake</td><td>PyMuPDF + skip empty + report</td></tr>
+          <tr><td>Routing</td><td>LLM classifier</td></tr>
+          <tr><td>Selenium repo language</td><td>Java (TestNG)</td></tr>
+          <tr><td>Test cases format</td><td>CSV (Chapter 8 style)</td></tr>
+          <tr><td>Conversation</td><td>Per-session multi-turn with rewriter</td></tr>
+          <tr><td>Citations</td><td>Inline <code>[N]</code> + sidebar source cards</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- T3 -->
+  <section id="t3" class="turn user">
+    <div class="role">Turn 3 · User</div>
+    <div class="bubble user">
+      <p>Selenium repo: <a href="https://github.com/PramodDutta/ATB14xSeleniumAdvanceFrameworks">github.com/PramodDutta/ATB14xSeleniumAdvanceFrameworks</a></p>
+      <p>Playwright repo: <a href="https://github.com/PramodDutta/Advance-Playwright-Framework">github.com/PramodDutta/Advance-Playwright-Framework</a> — please clone it.</p>
+    </div>
+  </section>
+  <section class="turn asst">
+    <div class="role">Assistant</div>
+    <div class="bubble asst">
+      <p>Got 2 of 4 sources. Asked for: VWO test cases CSV path, PDFs folder path.</p>
+    </div>
+  </section>
+  <section class="turn user">
+    <div class="role">Turn 3 (cont.) · User</div>
+    <div class="bubble user">
+      <p>Check again — data is added.</p>
+    </div>
+  </section>
+  <section class="turn asst">
+    <div class="role">Assistant</div>
+    <div class="bubble asst">
+      <p>Found the data tree. Five logical sources, not four:</p>
+      <ul>
+        <li><code>data/csv/testcases_vwo_100.csv</code> — 478 test case rows (file is bigger than the name implies)</li>
+        <li><code>data/pdf/Product Requirements Document_ VWO Login Dashboard (5).pdf</code> — 1 PRD, 14 page-chunks</li>
+        <li><code>data/md/Bug_VWO_*.md</code> — 2 JIRA bug exports (markdown, not PDF)</li>
+        <li><code>data/selenium_repo/</code> + <code>data/playwright_repo/</code> — empty, will clone</li>
+      </ul>
+      <p>Updated the plan to <strong>5 collections</strong>: <code>selenium_code</code>, <code>playwright_code</code>,
+         <code>vwo_testcases</code>, <code>vwo_docs</code>, <code>vwo_bugs</code>. Wrote final plan to disk and called <code>ExitPlanMode</code>.</p>
+    </div>
+  </section>
+
+  <!-- T4 -->
+  <section id="t4" class="turn user">
+    <div class="role">Turn 4 · User</div>
+    <div class="bubble user">
+      <p>(Approved the plan.) <strong>Auto mode active</strong> — execute autonomously.</p>
+    </div>
+  </section>
+  <section class="turn asst">
+    <div class="role">Assistant</div>
+    <div class="bubble asst">
+      <p>Built the chapter end-to-end across four phases:</p>
+      <ul>
+        <li><span class="chip">Phase 1</span> Scaffold: <code>backend/</code>, <code>requirements.txt</code>, <code>.env.example</code>, <code>.gitignore</code>; ported chunking + embedding from Chapter 8 Advance.</li>
+        <li><span class="chip">Phase 2</span> Retrieval pipeline: <code>qdrant_store.py</code> (5-collection bootstrap), <code>router.py</code> (Groq JSON classifier), <code>retriever.py</code> (rewrite → route → hybrid + RRF → rerank), FastAPI <code>main.py</code> with <code>/api/chat</code> SSE + <code>/api/explore</code>.</li>
+        <li><span class="chip">Phase 3</span> Frontend: Vite + React + Tailwind; pages <code>Chat</code> / <code>Explorer</code> / <code>Status</code>; components <code>SourceFilter</code>, <code>SourcePanel</code>, <code>MarkdownAnswer</code>.</li>
+        <li><span class="chip">Phase 4</span> Docs: <code>README.md</code>, <code>CLAUDE.md</code>, root README entry.</li>
+      </ul>
+      <p>Total: 17 backend Python files, 16 frontend files. All Python parsed clean.</p>
+    </div>
+  </section>
+
+  <!-- T5 -->
+  <section id="t5" class="turn user">
+    <div class="role">Turn 5 · User</div>
+    <div class="bubble user">
+      <p>Spawn one more agent. Build a <strong>RAG Explorer</strong> for debugging — show which chunks were
+         selected and how the LLM output was produced. Also create a KT folder with an HTML page
+         themed like <a href="https://app.thetestingacademy.com/rag">app.thetestingacademy.com/rag</a>.</p>
+      <ol>
+        <li>Full diagram of the RAG with all components.</li>
+        <li>RAG Explorer / debugger over the query.</li>
+        <li>Component breakdown.</li>
+      </ol>
+    </div>
+  </section>
+  <section class="turn asst">
+    <div class="role">Assistant</div>
+    <div class="bubble asst">
+      <p>Fetched the reference page for the design system (cyan/teal accent <code>#06b6d4</code>, system fonts, numbered sections).
+         Built <code>KT/index.html</code> as a single self-contained page with:</p>
+      <ul>
+        <li>Hero + sticky sidebar nav.</li>
+        <li>Mermaid architecture diagram (sources → ingest → embed → 5 Qdrant collections → query path → frontend).</li>
+        <li>Pipeline stages + RRF code snippet.</li>
+        <li>RAG Explorer panel-by-panel breakdown (rewrite, router, per-collection hits, RRF, rerank, final context, LLM call, answer).</li>
+        <li>12 component cards.</li>
+        <li>Per-collection chunk schemas, run instructions, smoke questions.</li>
+      </ul>
+      <p>Backend got <code>/api/explore</code> (returns the full trace, no streaming). Frontend got an <code>/explorer</code>
+         route that renders the trace as 7 expandable stage cards.</p>
+    </div>
+  </section>
+
+  <!-- T6 -->
+  <section id="t6" class="turn user">
+    <div class="role">Turn 6 · User</div>
+    <div class="bubble user">
+      <p>Create a scheduler that re-ingests every hour automatically. Make the cadence configurable
+         from the env file. <strong>Spawn a different agent</strong> and create a <code>scheduler/</code> folder.</p>
+    </div>
+  </section>
+  <section class="turn asst">
+    <div class="role">Assistant</div>
+    <div class="bubble asst">
+      <p>Spawned a builder agent. Output:</p>
+      <ul>
+        <li><code>scheduler/run.py</code> — APScheduler <code>BlockingScheduler</code>; supports both long-lived loop and <code>--once</code> for cron / launchd / systemd timers; lock file via <code>O_CREAT|O_EXCL</code> to skip overlapping cycles; rotating log at <code>data/_scheduler.log</code>; SIGINT/SIGTERM clean shutdown.</li>
+        <li>5 new env knobs: <code>INGEST_INTERVAL_MINUTES</code> (60), <code>INGEST_AT_STARTUP</code>, <code>INGEST_TARGETS</code>, <code>INGEST_RECREATE</code>, <code>INGEST_LOCK_FILE</code>.</li>
+        <li><code>scheduler/README.md</code> with macOS launchd + Linux systemd timer snippets.</li>
+        <li><code>backend/lib/settings.py</code> + <code>.env.example</code> + <code>requirements.txt</code> updated.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- T7 -->
+  <section id="t7" class="turn user">
+    <div class="role">Turn 7 · User</div>
+    <div class="bubble user">
+      <p>When you're done, start the frontend and backend. Tell me how many and what you've ingested.
+         Open the chat — we'll test it. The <code>.env</code> is set with my Groq key.</p>
+    </div>
+  </section>
+  <section class="turn asst">
+    <div class="role">Assistant</div>
+    <div class="bubble asst">
+      <p>Cloned the two source repos (shallow), made a venv, installed backend deps, ran ingest. Two dependency mismatches
+         surfaced and were fixed in place:</p>
+      <ol>
+        <li><code>FlagEmbedding 1.3.4</code> imports <code>is_torch_fx_available</code> which transformers 5.x removed → pinned <code>transformers&lt;5</code>.</li>
+        <li><code>peft 0.19.1</code> imports <code>GEMMA2_START_DOCSTRING</code> which transformers 4.55+ removed → pinned the trio: <code>transformers==4.46.3</code>, <code>peft==0.13.2</code>, <code>sentence-transformers==3.3.1</code>.</li>
+      </ol>
+      <p>Final ingest counts:</p>
+      <table>
+        <thead><tr><th>Collection</th><th>Points</th><th>Source</th></tr></thead>
+        <tbody>
+          <tr><td><code>selenium_code</code></td><td>83</td><td>26 .java files (AST-chunked)</td></tr>
+          <tr><td><code>playwright_code</code></td><td>456</td><td>54 .ts/.js files</td></tr>
+          <tr><td><code>vwo_testcases</code></td><td>478</td><td>CSV rows (file is bigger than the filename suggests)</td></tr>
+          <tr><td><code>vwo_docs</code></td><td>14</td><td>1 PRD PDF</td></tr>
+          <tr><td><code>vwo_bugs</code></td><td>2</td><td>JIRA MD exports</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>1033</strong></td><td></td></tr>
+        </tbody>
+      </table>
+      <p>Backend on :8001 (port 8000 was held by a stray ChromaDB from Chapter 8 — left it alone, switched ports). Vite
+         on :5173. Opened both Chat and KT in browser.</p>
+    </div>
+  </section>
+
+  <!-- T8 -->
+  <section id="t8" class="turn user">
+    <div class="role">Turn 8 · User</div>
+    <div class="bubble user">
+      <p>Two bugs noticed:</p>
+      <ol>
+        <li>Double text appearing in the answer (every word duplicated).</li>
+        <li>Code is not formatted properly when asking code-related questions.</li>
+      </ol>
+      <p>Also update the KT file with the scheduler info, and add a <strong>VPS / AWS / DigitalOcean / GCP deployment
+         guide</strong> to both KT and README.</p>
+    </div>
+  </section>
+  <section class="turn asst">
+    <div class="role">Assistant</div>
+    <div class="bubble asst">
+      <p><strong>Bug 1 root cause</strong>: <code>setTurns((prev) =&gt; { const arr = [...prev]; arr[i].content += piece; return arr; })</code>
+         shallow-copies the array but mutates the same object. React StrictMode invokes the updater twice in dev to surface
+         impurity → every token appended twice. Fixed by returning new objects everywhere:</p>
+      <pre><code>const next = prev.slice();
+next[idx] = { ...last, content: last.content + piece };
+return next;</code></pre>
+      <p><strong>Bug 2 fix</strong>: strengthened <code>ANSWER_SYSTEM</code> in <code>backend/lib/prompts.py</code> — code MUST go in fenced blocks
+         with explicit language tags; no inline raw code; no token repetition. Backend restarted to pick up the new prompt.</p>
+      <p><strong>KT</strong>: added section <code>09 · Hourly Scheduler</code> (env knobs, run modes, systemd snippet, single-process
+         Qdrant warning) and section <code>10 · Deployment Guide</code> (mermaid prod diagram; sizing table; 8 numbered steps:
+         provision → bootstrap → app → Qdrant Docker → systemd API → frontend build → nginx + Let's Encrypt → ingest timer;
+         provider commands for DO / AWS / GCP / Hetzner; ops notes).</p>
+      <p><strong>README</strong>: appended matching Hourly Scheduler + Deployment Guide sections.</p>
+    </div>
+  </section>
+
+  <!-- T9 -->
+  <section id="t9" class="turn user">
+    <div class="role">Turn 9 · User</div>
+    <div class="bubble user">
+      <p>Update the README, commit, and push the changes. Add this screenshot to the README so it shows on the
+         GitHub project page.</p>
+    </div>
+  </section>
+  <section class="turn asst">
+    <div class="role">Assistant</div>
+    <div class="bubble asst">
+      <p>Copied the screenshot to <code>Chapter_09_Project_QACopilot/docs/screenshot-chat.png</code>. Embedded it at the
+         top of both <code>Chapter_09_Project_QACopilot/README.md</code> and the root <code>README.md</code>. Verified
+         <code>.env.example</code> contained no real key, then committed the chapter and pushed to <code>main</code>.</p>
+    </div>
+  </section>
+
+  <!-- T10 -->
+  <section id="t10" class="turn user">
+    <div class="role">Turn 10 · User</div>
+    <div class="bubble user">
+      <p>Save the whole conversation as <code>prompts.html</code> in the KT folder.</p>
+    </div>
+  </section>
+  <section class="turn asst">
+    <div class="role">Assistant</div>
+    <div class="bubble asst">
+      <p>Created this page. Same theme as <code>KT/index.html</code>. Linked from the KT nav.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="author">Author: Pramod Dutta · Principal SDET</div>
+  <div>The Testing Academy · AI Tester Blueprint 2x · 2026 Edition</div>
+</footer>
+
+</body>
+</html>
